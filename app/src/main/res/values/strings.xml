@@ -1,4 +1,5 @@
 <resources>
     <string name="app_name">Vine Boom App</string>
     <string name="tile_name">Vine Boom</string>
+    <string name="saved_tile_volume"></string>
 </resources>
