@@ -2,4 +2,9 @@
     <string name="app_name">Vine Boom App</string>
     <string name="tile_name">Vine Boom</string>
     <string name="saved_tile_volume"></string>
+    <string name="appwidget_text">EXAMPLE</string>
+    <string name="configure">Configure</string>
+    <string name="add_widget">Add widget</string>
+    <string name="app_widget_description">This is an app widget description</string>
+    <string name="widget_boom">Vine Boom</string>
 </resources>

@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import com.edanthom.vineboomapp.ui.theme.VineBoomAppTheme
 import android.widget.Toast
+import androidx.activity.result.launch
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -38,8 +39,28 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.datastore.core.DataStore
+import androidx.datastore.dataStore
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.preferencesDataStore
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 
+
+val Context.dataStore: DataStore<Preferences> by preferencesDataStore(
+    name = "data" // Name of the preferences file
+)
+val volume_pref = intPreferencesKey("volume_pref")
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -96,21 +117,40 @@ private fun AddTileBtn() {
     }
 }
 
-fun saveVolume(context: Context, volume: Int) {
+fun saveVolume(context: Context, vol: Int, scope:CoroutineScope) {
+
+    //SharedPreferences Implementation
     val sharedPref: SharedPreferences = context.getSharedPreferences("volume_prefs", Context.MODE_PRIVATE)
     with(sharedPref.edit()) {
-        putInt(context.getString(R.string.saved_tile_volume), volume)
+        putInt(context.getString(R.string.saved_tile_volume), vol)
         apply()
     }
+
+    scope.launch {
+        context.dataStore.edit { data ->
+            data[volume_pref] = vol
+        }
+    }
+    //Data Storage Implementation
 }
 
 @Preview(showBackground = true)
 @Composable
 fun VolumeMenu(){
+    val coroutineScope = rememberCoroutineScope()
     VineBoomAppTheme {
         val context = LocalContext.current
         val sharedPref: SharedPreferences = context.getSharedPreferences("volume_prefs", Context.MODE_PRIVATE)
-        var volume by remember { mutableIntStateOf(50) }
+
+        val storedVolume: Int = runBlocking {
+            context.dataStore.data
+                .map { preferences ->
+                    preferences[volume_pref] ?: 50
+                }.first()
+        }
+
+
+        var volume by remember { mutableIntStateOf(storedVolume) }
 
 
         val mediaPlayer = remember { MediaPlayer.create(context, R.raw.boom_short) }
@@ -119,8 +159,6 @@ fun VolumeMenu(){
                 mediaPlayer.release()
             }
         }
-
-
 
         Column {
             Text(text = "Current Volume: $volume")
@@ -131,13 +169,13 @@ fun VolumeMenu(){
                     mediaPlayer.start()
 
 
-                    saveVolume(context, volume)
+                    saveVolume(context, volume, coroutineScope)
                 }
 
 
             }) {
                 Icon(
-                    imageVector = ImageVector.vectorResource(id = R.drawable.volume_incr), // Replace with your vector ID
+                    imageVector = ImageVector.vectorResource(id = R.drawable.volume_incr),
                     contentDescription = "Increase volume"
                 )
                 Spacer(modifier = Modifier.width(5.dp))
@@ -154,12 +192,12 @@ fun VolumeMenu(){
                     mediaPlayer.setVolume(volume / 100f, volume / 100f)
                     mediaPlayer.start()
 
-                    saveVolume(context, volume)
+                    saveVolume(context, volume, coroutineScope)
                 }
 
             }) {
                 Icon(
-                    imageVector = ImageVector.vectorResource(id = R.drawable.volume_dec), // Replace with your vector ID
+                    imageVector = ImageVector.vectorResource(id = R.drawable.volume_dec),
                     contentDescription = "Decrease volume"
                 )
                 Spacer(modifier = Modifier.width(5.dp))
@@ -169,9 +207,5 @@ fun VolumeMenu(){
         }
 
 
-    //        SharedPreferences.Editor.
-//
-//        val volume = SharedPreferences
-//        Text(text = "Current Volume " + volume)
     }
 }
